@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cycles</title>
+  <meta name="theme-color" content="#fbf7f4">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Cycles">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <nav id="personTabs" class="person-tabs" aria-label="People"></nav>
+  </header>
+
+  <main>
+    <!-- Cycle ring -->
+    <section id="view-cycle" class="view">
+      <div id="ringWrap" class="ring-wrap"></div>
+      <div id="ringNote" class="ring-note"></div>
+      <div id="cycleActions" class="actions"></div>
+      <div id="cycleFacts" class="facts"></div>
+    </section>
+
+    <!-- Cycle history -->
+    <section id="view-history" class="view" hidden>
+      <div id="historyStats" class="stats"></div>
+      <div class="section-head">
+        <h2>Cycle history</h2>
+        <button class="link" id="addPastBtn">+ Add past period</button>
+      </div>
+      <p class="muted small" id="historyHint">Tap a cycle to change its start date or delete it.</p>
+      <ol id="historyList" class="history"></ol>
+    </section>
+
+    <!-- Settings -->
+    <section id="view-settings" class="view" hidden>
+      <h2>People</h2>
+      <div id="peopleList" class="people"></div>
+      <button class="btn ghost" id="addPersonBtn">+ Add person</button>
+
+      <h2>Backup</h2>
+      <p class="muted" id="backupInfo"></p>
+      <div class="row-btns">
+        <button class="btn" id="exportBtn">Export backup</button>
+        <label class="btn ghost file-btn">Import backup
+          <input type="file" id="importInput" accept="application/json,.json" hidden>
+        </label>
+      </div>
+      <p class="muted small">All data stays on this phone only. Export a backup now and then (and save it to Files, Drive, or email it to yourself) so nothing is lost if the phone is reset.</p>
+
+      <h2>Delete data</h2>
+      <div id="clearList" class="row-btns"></div>
+      <p class="muted small">Deleting can't be undone. Export a backup first if you might want the data back.</p>
+    </section>
+  </main>
+
+  <nav class="bottom-bar" aria-label="Sections">
+    <button data-view="cycle" class="active"><span class="ico">◯</span>Cycle</button>
+    <button data-view="history"><span class="ico">☰</span>History</button>
+    <button data-view="settings"><span class="ico">⚙</span>Settings</button>
+  </nav>
+
+  <!-- Add / edit period sheet -->
+  <div id="sheet" class="sheet-backdrop" hidden>
+    <form id="periodForm" class="sheet">
+      <h3 id="sheetTitle">Log period</h3>
+      <label>Start date
+        <input type="date" id="fStart" required>
+      </label>
+      <p id="formError" class="error" hidden></p>
+      <div class="sheet-btns">
+        <button type="button" class="btn danger ghost" id="deleteBtn" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Confirm / message dialog -->
+  <div id="dialog" class="sheet-backdrop dialog-backdrop" hidden>
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-describedby="dialogMsg">
+      <p id="dialogMsg"></p>
+      <div id="dialogBtns" class="dialog-btns"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

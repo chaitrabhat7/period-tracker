@@ -1,0 +1,5 @@
+# Personal data and local tooling — never publish
+*.json
+!manifest.json
+CLAUDE.md
+.claude/
