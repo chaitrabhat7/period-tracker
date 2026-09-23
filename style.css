@@ -166,3 +166,12 @@ main { max-width: 520px; margin: 0 auto; padding: 0 18px; }
 .dialog p { margin: 0; line-height: 1.45; }
 .dialog-btns { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .btn.danger-solid { background: #c62828; }
+
+/* ---------- Backup reminder ---------- */
+.banner {
+  background: var(--card); border: 1.5px solid var(--pc, var(--accent)); border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 12px; font-size: .9rem;
+}
+.banner p { margin: 0 0 10px; line-height: 1.4; }
+.banner-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.banner-btns .btn { padding: 8px 16px; }

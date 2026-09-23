@@ -9,6 +9,8 @@ const PERIOD_DAYS = 5;          // only start dates are logged; each period is d
 const MIN_CYCLE = 15;          // shorter gaps are ignored when averaging
 const MAX_CYCLE = 60;          // longer gaps (e.g. a skipped month) are ignored
 const CYCLES_TO_AVERAGE = 6;
+const BACKUP_EVERY_DAYS = 15;  // remind to back up when there are changes and the last backup is this old
+const BACKUP_SNOOZE_DAYS = 3;
 
 function defaultData() {
   return {
@@ -34,7 +36,9 @@ function load() {
   return defaultData();
 }
 
-function save() {
+/** Every data change goes through here; `unsaved` tracks changes not yet in a backup. */
+function save({ backedUp = false } = {}) {
+  data.unsaved = !backedUp;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
@@ -153,6 +157,7 @@ function render() {
   document.querySelectorAll('.bottom-bar button').forEach(b => b.classList.toggle('active', b.dataset.view === ui.view));
   $('#personTabs').hidden = ui.view === 'settings';
   if (ui.view === 'cycle') renderCycle();
+  renderBackupBanner();
   if (ui.view === 'history') renderHistory();
   if (ui.view === 'settings') renderSettings();
 }
@@ -361,6 +366,35 @@ function ask(message, { ok = 'OK', cancel = 'Cancel', danger = false } = {}) {
 }
 const tell = message => ask(message, { cancel: null });
 
+/* ---------- Backup reminder ---------- */
+const SNOOZE_KEY = STORAGE_KEY + '.backupSnooze';
+
+function needsBackup() {
+  if (data.unsaved === false || !data.periods.length) return false;   // missing flag (older data) counts as unsaved
+  try { if (todayStr() < (localStorage.getItem(SNOOZE_KEY) || '')) return false; } catch (e) {}
+  return !data.lastBackup || todayDay() - toDay(data.lastBackup) >= BACKUP_EVERY_DAYS;
+}
+
+function renderBackupBanner() {
+  const lb = data.lastBackup;
+  $('#backupBanner').replaceChildren(...(needsBackup() ? [
+    el('p', {}, lb
+      ? `Your last backup was ${plural(todayDay() - toDay(lb), 'day')} ago, and you've made changes since.`
+      : "You haven't backed up yet. If this phone is reset or Chrome's data is cleared, everything is lost."),
+    el('div', { class: 'banner-btns' },
+      el('button', { class: 'btn ghost', onclick: snoozeBackup }, 'Later'),
+      el('button', { class: 'btn', onclick: exportBackup }, 'Back up now')),
+  ] : []));
+  $('#backupBanner').hidden = !needsBackup();
+}
+
+function snoozeBackup() {
+  try { localStorage.setItem(SNOOZE_KEY, fmtIso(todayDay() + BACKUP_SNOOZE_DAYS)); } catch (e) {}
+  renderBackupBanner();
+}
+
+function fmtIso(day) { return new Date(day * 86400000).toISOString().slice(0, 10); }
+
 /* ---------- Settings ---------- */
 function renderSettings() {
   $('#peopleList').replaceChildren(...data.people.map(p => el('div', { class: 'person-edit' },
@@ -411,23 +445,23 @@ $('#addPersonBtn').addEventListener('click', () => {
 });
 
 /* ---------- Export / import ---------- */
-$('#exportBtn').addEventListener('click', async () => {
-  data.lastBackup = todayStr();
-  save();
-  const json = JSON.stringify(data, null, 2);
+async function exportBackup() {
+  const json = JSON.stringify({ ...data, lastBackup: todayStr(), unsaved: false }, null, 2);
   const name = `cycles-backup-${todayStr()}.json`;
   const file = new File([json], name, { type: 'application/json' });
+  const done = () => { data.lastBackup = todayStr(); save({ backedUp: true }); render(); };
   // On phones, the share sheet lets you save to Files / Drive / email.
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'Cycles backup' }); renderSettings(); return; }
-    catch (e) { if (e.name === 'AbortError') { renderSettings(); return; } }
+    try { await navigator.share({ files: [file], title: 'Cycles backup' }); return done(); }
+    catch (e) { if (e.name === 'AbortError') return; }   // cancelled: not a backup
   }
   const url = URL.createObjectURL(file);
   const a = el('a', { href: url, download: name });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  renderSettings();
-});
+  done();
+}
+$('#exportBtn').addEventListener('click', exportBackup);
 
 $('#importInput').addEventListener('change', async e => {
   const f = e.target.files[0];
@@ -443,7 +477,7 @@ $('#importInput').addEventListener('change', async e => {
   if (!await ask(`Replace all current data with this backup (${plural(d.people.length, 'person')}, ${plural(d.periods.length, 'period')})?`, { ok: 'Replace' })) return;
   data = { ...defaultData(), ...d };
   ui.personId = data.people[0]?.id;
-  save(); saveUi(); render();
+  save({ backedUp: true }); saveUi(); render();   // what's on screen now matches a backup file
   tell('Backup restored.');
 });
 

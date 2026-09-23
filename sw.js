@@ -1,5 +1,5 @@
 // Bump CACHE when you change any app file so phones pick up the new version.
-const CACHE = 'cycles-v6';
+const CACHE = 'cycles-v7';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
