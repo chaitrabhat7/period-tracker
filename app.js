@@ -9,6 +9,9 @@ const PERIOD_DAYS = 5;          // only start dates are logged; each period is d
 const MIN_CYCLE = 15;          // shorter gaps are ignored when averaging
 const MAX_CYCLE = 60;          // longer gaps (e.g. a skipped month) are ignored
 const CYCLES_TO_AVERAGE = 6;
+const TYPICAL_CYCLE_MIN = 28;  // predictions use the person's average, kept within this range
+const TYPICAL_CYCLE_MAX = 35;
+const NOTE_TAGS = ['Spotting', 'Cramps', 'Headache', 'Mood change'];
 const BACKUP_EVERY_DAYS = 15;  // remind to back up when there are changes and the last backup is this old
 const BACKUP_SNOOZE_DAYS = 3;
 
@@ -21,6 +24,7 @@ function defaultData() {
       { id: 'p3', name: 'Daughter 2', color: '#2a9d8f' },
     ],
     periods: [],
+    notes: [],
     lastBackup: null,
   };
 }
@@ -30,7 +34,7 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.people) && Array.isArray(d.periods)) return d;
+      if (d && Array.isArray(d.people) && Array.isArray(d.periods)) return { ...defaultData(), ...d };
     }
   } catch (e) { /* fall through to defaults */ }
   return defaultData();
@@ -103,8 +107,10 @@ function statsFor(personId) {
   const avgCycle = average(validCycles) ?? DEFAULT_CYCLE;
   const isEstimate = validCycles.length === 0;
 
+  const predictCycle = Math.min(TYPICAL_CYCLE_MAX, Math.max(TYPICAL_CYCLE_MIN, avgCycle));
+
   const s = {
-    list, avgCycle, isEstimate, validCycles,
+    list, avgCycle, predictCycle, isEstimate, validCycles,
     hasData: list.length > 0,
   };
   if (!s.hasData) return s;
@@ -114,7 +120,7 @@ function statsFor(personId) {
   s.last = last;
   s.lastStart = lastStart;
   s.dayOfCycle = today - lastStart + 1;          // may be <= 0 if a future date was logged
-  s.nextStart = lastStart + avgCycle;
+  s.nextStart = lastStart + predictCycle;
   s.daysUntil = s.nextStart - today;
   s.late = s.daysUntil < 0 ? -s.daysUntil : 0;
   s.onPeriod = s.dayOfCycle >= 1 && s.dayOfCycle <= PERIOD_DAYS;
@@ -214,13 +220,14 @@ function renderCycle() {
     note.textContent = '';
     actions.replaceChildren(
       el('button', { class: 'btn big', onclick: () => openSheet({ personId: p.id }) }, 'Log period'),
+      el('button', { class: 'link', onclick: () => openNote({ personId: p.id }) }, '+ Add a note'),
     );
     facts.replaceChildren();
     return;
   }
 
   // Ring covers the current cycle plus the predicted next period.
-  const cycleDays = Math.max(s.avgCycle, s.dayOfCycle);
+  const cycleDays = Math.max(s.predictCycle, s.dayOfCycle);
   const predicted = s.late ? 0 : PERIOD_DAYS;
   const total = cycleDays + predicted;
 
@@ -259,10 +266,12 @@ function renderCycle() {
       el('span', {}, el('i', { style: 'background:var(--ink)' }), 'Today'),
     ),
     s.isEstimate ? el('div', { style: 'margin-top:6px' }, 'Prediction uses a 28-day estimate — log more periods to personalise it.') : null,
+    !s.isEstimate && s.predictCycle !== s.avgCycle ? el('div', { style: 'margin-top:6px' }, `Prediction uses ${s.predictCycle} days (typical range ${TYPICAL_CYCLE_MIN}–${TYPICAL_CYCLE_MAX}). Actual average: ${s.avgCycle} days.`) : null,
   ].filter(Boolean));
 
   actions.replaceChildren(
-    el('button', { class: 'btn big', onclick: () => openSheet({ personId: p.id }) }, 'Log period'));
+    el('button', { class: 'btn big', onclick: () => openSheet({ personId: p.id }) }, 'Log period'),
+    el('button', { class: 'link', onclick: () => openNote({ personId: p.id }) }, '+ Add a note'));
 
   facts.replaceChildren(
     fact(s.isEstimate ? '~28' : s.avgCycle, 'avg cycle (days)'),
@@ -312,6 +321,8 @@ function renderHistory() {
       el('b', {}, String(s.list.length)),
       el('span', {}, 'Periods logged')),
   );
+
+  renderNotes(p, s);
 
   const list = s.list;
   $('#historyHint').hidden = !list.length;
@@ -370,7 +381,7 @@ const tell = message => ask(message, { cancel: null });
 const SNOOZE_KEY = STORAGE_KEY + '.backupSnooze';
 
 function needsBackup() {
-  if (data.unsaved === false || !data.periods.length) return false;   // missing flag (older data) counts as unsaved
+  if (data.unsaved === false || !(data.periods.length || data.notes.length)) return false;   // missing flag (older data) counts as unsaved
   try { if (todayStr() < (localStorage.getItem(SNOOZE_KEY) || '')) return false; } catch (e) {}
   return !data.lastBackup || todayDay() - toDay(data.lastBackup) >= BACKUP_EVERY_DAYS;
 }
@@ -394,6 +405,62 @@ function snoozeBackup() {
 }
 
 function fmtIso(day) { return new Date(day * 86400000).toISOString().slice(0, 10); }
+
+/* ---------- Day notes (never affect cycle maths) ---------- */
+function renderNotes(p, s) {
+  const notes = data.notes.filter(n => n.personId === p.id)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  $('#notesList').replaceChildren(...(notes.length ? notes.map(n => {
+    const cycleStart = s.list.map(x => x.start).filter(d => d <= n.date).pop();
+    return el('li', { class: 'note-row', onclick: () => openNote(n) },
+      el('div', { class: 'head' },
+        el('span', { class: 'range' }, fmt(toDay(n.date), true)),
+        cycleStart ? el('span', { class: 'len' }, `Cycle day ${toDay(n.date) - toDay(cycleStart) + 1}`) : null),
+      n.tags.length ? el('div', { class: 'note-tags' }, n.tags.join(' · ')) : null,
+      n.text ? el('div', { class: 'note-text' }, n.text) : null);
+  }) : [el('li', { class: 'empty' }, 'No notes yet.')]));
+}
+
+let editingNote = null;
+function openNote(note) {
+  editingNote = note;
+  $('#noteTitle').textContent = `${note.id ? 'Edit' : 'Add'} note · ${person().name}`;
+  $('#nDate').value = note.date || todayStr();
+  $('#nDate').max = todayStr();
+  $('#nText').value = note.text || '';
+  $('#noteTags').replaceChildren(...NOTE_TAGS.map(t => el('button', {
+    type: 'button', class: 'chip' + (note.tags?.includes(t) ? ' on' : ''),
+    onclick: e => e.currentTarget.classList.toggle('on'),
+  }, t)));
+  $('#noteDeleteBtn').hidden = !note.id;
+  $('#noteError').hidden = true;
+  $('#noteSheet').hidden = false;
+}
+function closeNote() { $('#noteSheet').hidden = true; editingNote = null; }
+
+$('#noteCancelBtn').addEventListener('click', closeNote);
+$('#noteSheet').addEventListener('click', e => { if (e.target.id === 'noteSheet') closeNote(); });
+$('#noteDeleteBtn').addEventListener('click', async () => {
+  const id = editingNote?.id;
+  if (!id) return;
+  if (!await ask('Delete this note?', { ok: 'Delete', danger: true })) return;
+  data.notes = data.notes.filter(n => n.id !== id);
+  save(); closeNote(); render();
+});
+$('#noteForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const date = $('#nDate').value;
+  const text = $('#nText').value.trim();
+  const tags = [...document.querySelectorAll('#noteTags .chip.on')].map(b => b.textContent);
+  if (!date || (!text && !tags.length)) {
+    $('#noteError').textContent = 'Pick a date, and choose a tag or write something.';
+    $('#noteError').hidden = false;
+    return;
+  }
+  if (editingNote.id) Object.assign(editingNote, { date, text, tags });
+  else data.notes.push({ id: newId(), personId: editingNote.personId, date, text, tags });
+  save(); closeNote(); render();
+});
 
 /* ---------- Settings ---------- */
 function renderSettings() {
@@ -420,6 +487,7 @@ async function removePerson(p) {
   if (!await ask(`Remove ${p.name}${n ? ` and their ${plural(n, 'logged period')}` : ''}? This can't be undone.`, { ok: 'Remove', danger: true })) return;
   data.people = data.people.filter(x => x.id !== p.id);
   data.periods = data.periods.filter(x => x.personId !== p.id);
+  data.notes = data.notes.filter(x => x.personId !== p.id);
   save(); render();
 }
 

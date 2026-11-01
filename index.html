@@ -38,6 +38,9 @@
       </div>
       <p class="muted small" id="historyHint">Tap a cycle to change its start date or delete it.</p>
       <ol id="historyList" class="history"></ol>
+
+      <h2>Day notes</h2>
+      <ul id="notesList" class="history"></ul>
     </section>
 
     <!-- Settings -->
@@ -80,6 +83,27 @@
         <button type="button" class="btn danger ghost" id="deleteBtn" hidden>Delete</button>
         <span class="spacer"></span>
         <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Add / edit day note sheet -->
+  <div id="noteSheet" class="sheet-backdrop" hidden>
+    <form id="noteForm" class="sheet">
+      <h3 id="noteTitle">Add note</h3>
+      <label>Date
+        <input type="date" id="nDate" required>
+      </label>
+      <div id="noteTags" class="chips"></div>
+      <label>Note <span class="muted small">(optional)</span>
+        <textarea id="nText" rows="2" maxlength="300"></textarea>
+      </label>
+      <p id="noteError" class="error" hidden></p>
+      <div class="sheet-btns">
+        <button type="button" class="btn danger ghost" id="noteDeleteBtn" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="noteCancelBtn">Cancel</button>
         <button type="submit" class="btn">Save</button>
       </div>
     </form>

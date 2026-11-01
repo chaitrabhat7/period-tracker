@@ -175,3 +175,23 @@ main { max-width: 520px; margin: 0 auto; padding: 0 18px; }
 .banner p { margin: 0 0 10px; line-height: 1.4; }
 .banner-btns { display: flex; justify-content: flex-end; gap: 8px; }
 .banner-btns .btn { padding: 8px 16px; }
+
+/* ---------- Day notes ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font: inherit; font-size: .85rem; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--ink); border: 1.5px solid var(--line);
+}
+.chip.on { background: var(--pc, var(--accent)); border-color: var(--pc, var(--accent)); color: #fff; }
+.sheet textarea {
+  font: inherit; font-weight: 400; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 12px;
+  background: var(--bg); width: 100%; resize: vertical;
+}
+.note-row {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 10px; cursor: pointer; list-style: none;
+}
+.note-row .head { display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; font-weight: 600; }
+.note-row .len { font-size: .78rem; font-weight: 500; color: var(--muted); }
+.note-tags { font-size: .85rem; margin-top: 4px; color: var(--pc, var(--accent)); font-weight: 600; }
+.note-text { font-size: .85rem; margin-top: 4px; overflow-wrap: anywhere; }
